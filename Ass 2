@@ -1,28 +1,41 @@
-# Understanding the connectivity of Raspberry-Pi/Beagle board circuit with temperature sensor.
-# Write an application to read the environment temperature. If temperature crosses a
-# threshold value, generate alerts using LEDs
-
 import Adafruit_DHT
 import RPi.GPIO as GPIO
+import time
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(20, GPIO.OUT)  # Temperature LED
 GPIO.setup(26, GPIO.OUT)  # Humidity LED
 GPIO.setwarnings(False)
 
-while True:
-    Humid, Temp = Adafruit_DHT.read_retry(11, 21)
-    print(Humid, Temp)
-    
-    if(Humid > 65):
-        GPIO.output(26, GPIO.HIGH)
-        if(Temp > 28):
-            GPIO.output(20, GPIO.HIGH)
+print("Starting Temperature & Humidity Monitoring...")
+print("Press Ctrl+C to exit\n")
+
+try:
+    while True:
+        Humid, Temp = Adafruit_DHT.read_retry(11, 21)
+        
+        if Humid is not None and Temp is not None:
+            print(f"Humidity: {Humid:.1f}% | Temperature: {Temp:.1f}°C")
+            
+            # Humidity check
+            if Humid > 65:
+                GPIO.output(26, GPIO.HIGH)
+                print("⚠️  High Humidity Alert!")
+            else:
+                GPIO.output(26, GPIO.LOW)
+            
+            # Temperature check
+            if Temp > 28:
+                GPIO.output(20, GPIO.HIGH)
+                print("⚠️  High Temperature Alert!")
+            else:
+                GPIO.output(20, GPIO.LOW)
         else:
-            GPIO.output(20, GPIO.LOW)  # Fixed: comma instead of period
-    else:
-        GPIO.output(26, GPIO.LOW)
-        if(Temp > 28):
-            GPIO.output(20, GPIO.HIGH)
-        else:
-            GPIO.output(20, GPIO.LOW)  # Fixed: comma instead of period
+            print("Failed to read sensor. Retrying...")
+        
+        time.sleep(2)  # Read every 2 seconds
+
+except KeyboardInterrupt:
+    print("\n\nCleaning up GPIO...")
+    GPIO.cleanup()
+    print("Program terminated.")
