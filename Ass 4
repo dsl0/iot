@@ -1,0 +1,52 @@
+import time
+import http.client as httplib
+import urllib.parse
+import Adafruit_DHT
+
+# Configuration
+SENSOR_TYPE = 11  # DHT11 sensor
+SENSOR_PIN = 21   # GPIO pin number
+SLEEP_INTERVAL = 5  # seconds between readings
+THINGSPEAK_KEY = 'HJEQMRUDGXPTXNPY'  # Your Thingspeak channel key
+
+print("Starting sensor monitoring...")
+
+while True:
+    time.sleep(SLEEP_INTERVAL)
+    
+    # Read temperature and humidity from DHT sensor
+    humidity, temperature = Adafruit_DHT.read_retry(SENSOR_TYPE, SENSOR_PIN)
+    
+    # Validate sensor readings
+    if humidity is None or temperature is None:
+        print("Failed to get sensor reading. Retrying...")
+        continue
+    
+    print(f"Temperature: {temperature}°C, Humidity: {humidity}%")
+    
+    # Prepare data for ThingSpeak
+    params = urllib.parse.urlencode({
+        'field1': temperature,
+        'field2': humidity,
+        'key': THINGSPEAK_KEY
+    })
+    
+    headers = {
+        "Content-type": "application/x-www-form-urlencoded",
+        "Accept": "text/plain"
+    }
+    
+    # Send data to ThingSpeak
+    conn = httplib.HTTPConnection("api.thingspeak.com:80")
+    
+    try:
+        conn.request("POST", "/update", params, headers)
+        response = conn.getresponse()
+        print(f"Response: {response.status} {response.reason}")
+        data = response.read()
+        conn.close()
+    except Exception as e:
+        print(f"Connection failed: {e}")
+    finally:
+        if conn:
+            conn.close()
